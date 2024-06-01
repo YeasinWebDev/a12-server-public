@@ -47,6 +47,7 @@ async function run() {
 
     const db = client.db('m-12')
     const bioDatasCollection = db.collection('bioDatas')
+    const successStoriesCollection = db.collection('successStories')
 
     // get all the bioDatas
     app.get('/bioDatas', async (req, res) => {
@@ -65,6 +66,12 @@ async function run() {
         res.status(500).send({ error: 'Failed to fetch stats' });
       }
     });
+
+    // success story collection
+    app.get('/successStories', async (req, res) => {
+      const successStories = await successStoriesCollection.find().toArray();
+      res.send(successStories);
+    })
 
     // await client.connect();
     // Send a ping to confirm a successful connection
