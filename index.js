@@ -54,7 +54,17 @@ async function run() {
       res.send(bioDatas);
     })
 
-    
+    app.get('/stats', async (req, res) => {
+      try {
+        const totalBioDatas = await bioDatasCollection.countDocuments();
+        const totalGirls = await bioDatasCollection.countDocuments({ biodataType: 'Female' });
+        const totalBoys = await bioDatasCollection.countDocuments({ biodataType: 'Male' });
+        const totalMarriages = await bioDatasCollection.countDocuments({ marriageCompleted: true });
+        res.send({ totalBioDatas, totalGirls, totalBoys, totalMarriages });
+      } catch (error) {
+        res.status(500).send({ error: 'Failed to fetch stats' });
+      }
+    });
 
     // await client.connect();
     // Send a ping to confirm a successful connection
