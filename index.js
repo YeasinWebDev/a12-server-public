@@ -1,4 +1,4 @@
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require("express");
 const cors = require("cors");
 const jwt = require('jsonwebtoken')
@@ -53,6 +53,13 @@ async function run() {
     app.get('/bioDatas', async (req, res) => {
       const bioDatas = await bioDatasCollection.find().toArray();
       res.send(bioDatas);
+    })
+
+    // get req for single bioData
+    app.get('/bioDatas/:id', async (req, res) => {
+      const id = req.params.id;
+      const bioData = await bioDatasCollection.findOne({ _id: new ObjectId(id) });
+      res.send(bioData);
     })
 
     app.get('/stats', async (req, res) => {
