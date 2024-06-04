@@ -102,6 +102,17 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/user", async (req, res) => {
+      const email = req.query.email;
+      try {
+        const user = await userCollection.findOne({ email: email });
+        res.send(user);
+      } catch (error) {
+        console.error("Error finding user:", error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
+
     // await client.connect();
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
