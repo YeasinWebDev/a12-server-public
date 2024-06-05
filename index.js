@@ -60,6 +60,15 @@ async function run() {
       res.send(bioData);
     });
 
+    // get req for related bioData
+    app.get('/relatedData', async (req, res) => {
+      const biodataType = req.query.biodataType
+      const bioData = await bioDatasCollection.find({
+        biodataType
+      }).toArray();
+      res.send(bioData);
+    })
+
     app.get("/stats", async (req, res) => {
       try {
         const totalBioDatas = await bioDatasCollection.countDocuments();
