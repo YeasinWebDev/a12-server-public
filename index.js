@@ -10,7 +10,12 @@ const PORT = process.env.PORT || 8000;
 
 const app = express();
 
-app.use(cors());
+const corsOptions = {
+  origin: "http://localhost:5173",
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 
 app.use(express.json());
 
@@ -38,6 +43,22 @@ const client = new MongoClient(uri, {
   },
 });
 
+// Verify Token Middleware
+const verifyToken = async (req, res, next) => {
+  const token = req.cookies?.token;
+  if (!token) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+  jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+    if (err) {
+      console.log(err);
+      return res.status(401).send({ message: "unauthorized access" });
+    }
+    req.user = decoded;
+    next();
+  });
+};
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -48,6 +69,23 @@ async function run() {
     const userCollection = db.collection("user");
     const paymentCollection = db.collection("payment");
 
+    // jwt
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
+        expiresIn: "1hr",
+      });
+    
+      res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+        })
+        .send({ success: true });
+    });
+    
+
     // get all the bioDatas
     app.get("/bioDatas", async (req, res) => {
       const bioDatas = await bioDatasCollection.find().toArray();
@@ -55,7 +93,7 @@ async function run() {
     });
 
     // get req for single bioData
-    app.get("/bioDatas/:id", async (req, res) => {
+    app.get("/bioDatas/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const bioData = await bioDatasCollection.findOne({
         _id: new ObjectId(id),
@@ -145,11 +183,11 @@ async function run() {
       }
     });
 
-    app.post('/payment', async (req, res) => {
-      const payment = req.body
-      const result = await paymentCollection.insertOne(payment)
-      res.send(result)
-    })
+    app.post("/payment", async (req, res) => {
+      const payment = req.body;
+      const result = await paymentCollection.insertOne(payment);
+      res.send(result);
+    });
 
     // await client.connect();
     // Send a ping to confirm a successful connection
