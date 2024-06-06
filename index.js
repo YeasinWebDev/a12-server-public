@@ -1,9 +1,11 @@
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
+const Stripe = require("stripe");
+const stripe = Stripe(process.env.STRIPE_KEY);
 const cookieParser = require("cookie-parser");
-require("dotenv").config();
 const PORT = process.env.PORT || 8000;
 
 const app = express();
@@ -44,6 +46,7 @@ async function run() {
     const bioDatasCollection = db.collection("bioDatas");
     const successStoriesCollection = db.collection("successStories");
     const userCollection = db.collection("user");
+    const paymentCollection = db.collection("payment");
 
     // get all the bioDatas
     app.get("/bioDatas", async (req, res) => {
@@ -61,13 +64,15 @@ async function run() {
     });
 
     // get req for related bioData
-    app.get('/relatedData', async (req, res) => {
-      const biodataType = req.query.biodataType
-      const bioData = await bioDatasCollection.find({
-        biodataType
-      }).toArray();
+    app.get("/relatedData", async (req, res) => {
+      const biodataType = req.query.biodataType;
+      const bioData = await bioDatasCollection
+        .find({
+          biodataType,
+        })
+        .toArray();
       res.send(bioData);
-    })
+    });
 
     app.get("/stats", async (req, res) => {
       try {
@@ -121,6 +126,30 @@ async function run() {
         res.status(500).send("Internal Server Error");
       }
     });
+
+    // payment intent
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+
+      try {
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount,
+          currency: "usd",
+          payment_method_types: ["card"],
+        });
+        res.send({ clientSecret: paymentIntent.client_secret });
+      } catch (error) {
+        console.error("Error creating payment intent:", error);
+        res.status(500).send({ error: "Failed to create payment intent" });
+      }
+    });
+
+    app.post('/payment', async (req, res) => {
+      const payment = req.body
+      const result = await paymentCollection.insertOne(payment)
+      res.send(result)
+    })
 
     // await client.connect();
     // Send a ping to confirm a successful connection
