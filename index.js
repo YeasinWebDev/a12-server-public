@@ -75,7 +75,7 @@ async function run() {
       const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
         expiresIn: "1hr",
       });
-    
+
       res
         .cookie("token", token, {
           httpOnly: true,
@@ -84,7 +84,6 @@ async function run() {
         })
         .send({ success: true });
     });
-    
 
     // get all the bioDatas
     app.get("/bioDatas", async (req, res) => {
@@ -162,6 +161,63 @@ async function run() {
       } catch (error) {
         console.error("Error finding user:", error);
         res.status(500).send("Internal Server Error");
+      }
+    });
+
+    // dashboard save a biodata
+    app.put("/bioDatas", verifyToken, async (req, res) => {
+      try {
+        const bioData = req.body;
+        const filter = { contactEmail: bioData.contactEmail };
+
+        // Find the last biodata entry and determine the new biodata_id
+        const lastBioData = await bioDatasCollection
+          .find()
+          .sort({ biodata_id: -1 })
+          .limit(1)
+          .toArray();
+
+        const newBiodataId = lastBioData.length > 0 ? parseInt(lastBioData[0].biodata_id) + 1 : 1;
+
+
+        // Construct the update document
+        const updateDoc = {
+          $set: {
+            name: bioData.name,
+            biodata_id: newBiodataId,
+            biodataType: bioData.biodataType,
+            profileImage: bioData.profileImage,
+            fathersName: bioData.fathersName,
+            mothersName: bioData.mothersName,
+            dateOfBirth: bioData.dateOfBirth,
+            height: bioData.height,
+            weight: bioData.weight,
+            age: bioData.age,
+            occupation: bioData.occupation,
+            race: bioData.race,
+            permanentDivision: bioData.permanentDivision,
+            presentDivision: bioData.presentDivision,
+            expectedPartnerAge: bioData.expectedPartnerAge,
+            expectedPartnerHeight: bioData.expectedPartnerHeight,
+            expectedPartnerWeight: bioData.expectedPartnerWeight,
+            contactEmail: bioData.contactEmail,
+            mobileNumber: bioData.mobileNumber,
+          },
+        };
+
+        // Upsert the biodata document
+        const option = { upsert: true };
+        const result = await bioDatasCollection.updateOne(
+          filter,
+          updateDoc,
+          option
+        );
+
+        // Send the result
+        res.send(result);
+      } catch (error) {
+        console.error("Error updating biodata:", error);
+        res.status(500).send({ error: "Failed to update biodata" });
       }
     });
 
