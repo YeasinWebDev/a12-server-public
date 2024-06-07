@@ -68,6 +68,7 @@ async function run() {
     const successStoriesCollection = db.collection("successStories");
     const userCollection = db.collection("user");
     const paymentCollection = db.collection("payment");
+    const makePremiumCollection = db.collection("makePremium");
 
     // jwt
     app.post("/jwt", async (req, res) => {
@@ -91,11 +92,15 @@ async function run() {
       res.send(bioDatas);
     });
 
-    // get req by email
+    // get req by email in dashboard
     app.get("/dashboardBiodata", verifyToken, async (req, res) => {
       const Email = req.query.contactEmail;
       const bioData = await bioDatasCollection.findOne({ contactEmail: Email });
-      res.send(bioData);
+      // console.log(bioData.biodata_id)
+
+      const status = await makePremiumCollection.findOne({biodataId:bioData.biodata_id})
+      console.log(status)
+      res.send({bioData, status});
     });
     // dashboard biodata page
     app.put("/bioDatas", verifyToken, async (req, res) => {
@@ -191,6 +196,14 @@ async function run() {
         res.status(500).send({ error: "Failed to fetch stats" });
       }
     });
+
+    // dashboard make premium req
+    app.post('/makePremium', async (req,res) => {
+      const data =  req.body
+      const result = await makePremiumCollection.insertOne(data)
+      res.send(result)
+    })
+
 
     // success story collection
     app.get("/successStories", async (req, res) => {
