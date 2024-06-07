@@ -92,6 +92,13 @@ async function run() {
       res.send(bioDatas);
     });
 
+    // get by bioData_id 
+    app.get('/bioDatasbyId',verifyToken, async (req, res) => {
+      const biodata_id = req.query.id;
+      const bioData = await bioDatasCollection.findOne({ biodata_id: biodata_id });
+      res.send(bioData);
+    })
+
     // get req by email in dashboard
     app.get("/dashboardBiodata", verifyToken, async (req, res) => {
       const Email = req.query.contactEmail;
@@ -263,6 +270,22 @@ async function run() {
       const result = await paymentCollection.insertOne(payment);
       res.send(result);
     });
+
+    app.get('/payment', async (req, res)=>{
+      const payment = await paymentCollection.find().toArray()
+      res.send(payment)
+    })
+    app.get('/paymentById', async (req, res) => {
+      const id = req.query.biodataId
+      const payment = await paymentCollection.findOne({bioDataId:id})
+      res.send(payment)
+    })
+    app.delete('/payment/:id', async (req, res) => {
+      const id = req.params.id
+      console.log(id)
+      const result = await paymentCollection.deleteOne({_id:new ObjectId(id)})
+      res.send(result)
+    })
 
     // await client.connect();
     // Send a ping to confirm a successful connection
