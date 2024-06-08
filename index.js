@@ -69,6 +69,7 @@ async function run() {
     const userCollection = db.collection("user");
     const paymentCollection = db.collection("payment");
     const makePremiumCollection = db.collection("makePremium");
+    const favouritesCollection = db.collection("favourites");
 
     // jwt
     app.post("/jwt", async (req, res) => {
@@ -211,6 +212,31 @@ async function run() {
       res.send(result)
     })
 
+    // dashboard Favourites
+    app.post('/favourites',verifyToken, async (req,res) => {
+      const data =  req.body
+      const result = await favouritesCollection.insertOne(data)
+      res.send(result)
+    })
+
+    app.get('/favourites',verifyToken, async (req,res) => {
+       const result = await favouritesCollection.find().toArray()
+       res.send(result)
+    })
+
+    app.get('/favouritesbyId',verifyToken, async (req,res) => {
+      const id = req.query.id
+      console.log(typeof id)
+      const result = await favouritesCollection.findOne({biodataId: id})
+      console.log(result)
+      res.send(result)
+    })
+
+    app.delete('/favourites',verifyToken, async (req,res) => {
+      const id = req.query.id
+      const result = await favouritesCollection.deleteOne({biodataId: id})
+      res.send(result)
+    })
 
     // success story collection
     app.get("/successStories", async (req, res) => {
@@ -219,7 +245,7 @@ async function run() {
     });
 
     // save user
-    app.put("/user", async (req, res) => {
+    app.put("/user",verifyToken, async (req, res) => {
       const user = req.body;
       const query = { email: user.email };
       const isExist = await userCollection.findOne(query);
@@ -236,7 +262,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/user", async (req, res) => {
+    app.get("/user",verifyToken, async (req, res) => {
       const email = req.query.email;
       try {
         const user = await userCollection.findOne({ email: email });
@@ -268,21 +294,15 @@ async function run() {
     app.post("/payment", async (req, res) => {
       const payment = req.body;
       const result = await paymentCollection.insertOne(payment);
-      res.send(result);
+      res.send({result});
     });
 
     app.get('/payment', async (req, res)=>{
       const payment = await paymentCollection.find().toArray()
       res.send(payment)
     })
-    app.get('/paymentById', async (req, res) => {
-      const id = req.query.biodataId
-      const payment = await paymentCollection.findOne({bioDataId:id})
-      res.send(payment)
-    })
     app.delete('/payment/:id', async (req, res) => {
       const id = req.params.id
-      console.log(id)
       const result = await paymentCollection.deleteOne({_id:new ObjectId(id)})
       res.send(result)
     })
