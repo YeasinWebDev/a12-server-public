@@ -93,22 +93,24 @@ async function run() {
       res.send(bioDatas);
     });
 
-    // get by bioData_id 
-    app.get('/bioDatasbyId',verifyToken, async (req, res) => {
+    // get by bioData_id
+    app.get("/bioDatasbyId", verifyToken, async (req, res) => {
       const biodata_id = req.query.id;
-      const bioData = await bioDatasCollection.findOne({ biodata_id: biodata_id });
+      const bioData = await bioDatasCollection.findOne({
+        biodata_id: biodata_id,
+      });
       res.send(bioData);
-    })
+    });
 
     // get req by email in dashboard
     app.get("/dashboardBiodata", verifyToken, async (req, res) => {
       const Email = req.query.contactEmail;
       const bioData = await bioDatasCollection.findOne({ contactEmail: Email });
-      // console.log(bioData.biodata_id)
 
-      const status = await makePremiumCollection.findOne({biodataId:bioData.biodata_id})
-      console.log(status)
-      res.send({bioData, status});
+      const status = await makePremiumCollection.findOne({
+        biodataId: bioData.biodata_id,
+      });
+      res.send({ bioData, status });
     });
     // dashboard biodata page
     app.put("/bioDatas", verifyToken, async (req, res) => {
@@ -147,7 +149,8 @@ async function run() {
             expectedPartnerHeight: bioData.expectedPartnerHeight,
             expectedPartnerWeight: bioData.expectedPartnerWeight,
             contactEmail: bioData.contactEmail,
-            mobileNumber: bioData.mobileNumber,
+            mobileNumber: bioData.mobileNumber,     
+            premium :'false'
           },
         };
 
@@ -173,6 +176,13 @@ async function run() {
       const bioData = await bioDatasCollection.findOne({
         _id: new ObjectId(id),
       });
+      res.send(bioData);
+    });
+
+    // get req by email
+    app.get("/bioDatasbyEmail", verifyToken, async (req, res) => {
+      const Email = req.query.contactEmail;
+      const bioData = await bioDatasCollection.findOne({ contactEmail: Email });
       res.send(bioData);
     });
 
@@ -206,37 +216,35 @@ async function run() {
     });
 
     // dashboard make premium req
-    app.post('/makePremium', async (req,res) => {
-      const data =  req.body
-      const result = await makePremiumCollection.insertOne(data)
-      res.send(result)
-    })
+    app.post("/makePremium", async (req, res) => {
+      const data = req.body;
+      const result = await makePremiumCollection.insertOne(data);
+      res.send(result);
+    });
 
     // dashboard Favourites
-    app.post('/favourites',verifyToken, async (req,res) => {
-      const data =  req.body
-      const result = await favouritesCollection.insertOne(data)
-      res.send(result)
-    })
+    app.post("/favourites", verifyToken, async (req, res) => {
+      const data = req.body;
+      const result = await favouritesCollection.insertOne(data);
+      res.send(result);
+    });
 
-    app.get('/favourites',verifyToken, async (req,res) => {
-       const result = await favouritesCollection.find().toArray()
-       res.send(result)
-    })
+    app.get("/favourites", verifyToken, async (req, res) => {
+      const result = await favouritesCollection.find().toArray();
+      res.send(result);
+    });
 
-    app.get('/favouritesbyId',verifyToken, async (req,res) => {
-      const id = req.query.id
-      console.log(typeof id)
-      const result = await favouritesCollection.findOne({biodataId: id})
-      console.log(result)
-      res.send(result)
-    })
+    app.get("/favouritesbyId", verifyToken, async (req, res) => {
+      const id = req.query.id;
+      const result = await favouritesCollection.findOne({ biodataId: id });
+      res.send(result);
+    });
 
-    app.delete('/favourites',verifyToken, async (req,res) => {
-      const id = req.query.id
-      const result = await favouritesCollection.deleteOne({biodataId: id})
-      res.send(result)
-    })
+    app.delete("/favourites", verifyToken, async (req, res) => {
+      const id = req.query.id;
+      const result = await favouritesCollection.deleteOne({ biodataId: id });
+      res.send(result);
+    });
 
     // success story collection
     app.get("/successStories", async (req, res) => {
@@ -245,7 +253,7 @@ async function run() {
     });
 
     // save user
-    app.put("/user",verifyToken, async (req, res) => {
+    app.put("/user", verifyToken, async (req, res) => {
       const user = req.body;
       const query = { email: user.email };
       const isExist = await userCollection.findOne(query);
@@ -262,7 +270,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/user",verifyToken, async (req, res) => {
+    app.get("/user", verifyToken, async (req, res) => {
       const email = req.query.email;
       try {
         const user = await userCollection.findOne({ email: email });
@@ -270,6 +278,30 @@ async function run() {
       } catch (error) {
         console.error("Error finding user:", error);
         res.status(500).send("Internal Server Error");
+      }
+    });
+
+    // admin dashboard
+    app.get("/DashbordStats", verifyToken, async (req, res) => {
+      try {
+        const totalBioDatas = await bioDatasCollection.countDocuments();
+        const totalGirls = await bioDatasCollection.countDocuments({
+          biodataType: "Female",
+        });
+        const totalBoys = await bioDatasCollection.countDocuments({
+          biodataType: "Male",
+        });
+
+        const premiumBiodata = await bioDatasCollection.countDocuments({
+          premium: "true",
+        })
+
+        const payments = await paymentCollection.find({}).toArray();
+        const totalRevenue = payments.reduce((sum, payment) => sum + payment.price, 0);
+
+        res.send({ premiumBiodata,totalBioDatas,totalGirls,totalBoys,totalRevenue });
+      } catch (error) {
+        res.status(500).send({ error: "Failed to fetch stats" });
       }
     });
 
@@ -294,18 +326,27 @@ async function run() {
     app.post("/payment", async (req, res) => {
       const payment = req.body;
       const result = await paymentCollection.insertOne(payment);
-      res.send({result});
+      res.send({ result });
     });
 
-    app.get('/payment', async (req, res)=>{
-      const payment = await paymentCollection.find().toArray()
+    app.get("/payment", async (req, res) => {
+      const payment = await paymentCollection.find().toArray();
+      res.send(payment);
+    });
+
+    app.get('/paymentById', async (req, res) => {
+      const bioData_id = req.query.biodataId
+      const payment = await paymentCollection.findOne({  bioDataId:bioData_id })
       res.send(payment)
     })
-    app.delete('/payment/:id', async (req, res) => {
-      const id = req.params.id
-      const result = await paymentCollection.deleteOne({_id:new ObjectId(id)})
-      res.send(result)
-    })
+
+    app.delete("/payment/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await paymentCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
 
     // await client.connect();
     // Send a ping to confirm a successful connection
