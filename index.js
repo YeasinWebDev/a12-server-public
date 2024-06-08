@@ -108,7 +108,7 @@ async function run() {
       const bioData = await bioDatasCollection.findOne({ contactEmail: Email });
 
       const status = await makePremiumCollection.findOne({
-        biodataId: bioData.biodata_id,
+        biodataId: bioData?.biodata_id,
       });
       res.send({ bioData, status });
     });
@@ -149,8 +149,8 @@ async function run() {
             expectedPartnerHeight: bioData.expectedPartnerHeight,
             expectedPartnerWeight: bioData.expectedPartnerWeight,
             contactEmail: bioData.contactEmail,
-            mobileNumber: bioData.mobileNumber,     
-            premium :'false'
+            mobileNumber: bioData.mobileNumber,
+            premium: "false",
           },
         };
 
@@ -230,7 +230,8 @@ async function run() {
     });
 
     app.get("/favourites", verifyToken, async (req, res) => {
-      const result = await favouritesCollection.find().toArray();
+      const email = req.query.email;
+      const result = await favouritesCollection.find({user:email}).toArray();
       res.send(result);
     });
 
@@ -253,21 +254,27 @@ async function run() {
     });
 
     // save user
-    app.put("/user", verifyToken, async (req, res) => {
-      const user = req.body;
-      const query = { email: user.email };
-      const isExist = await userCollection.findOne(query);
+    app.put("/user", async (req, res) => {
+      try {
+        const user = req.body;
+        console.log(user);
+        const query = { email: user.email };
+        const option = { upsert: true };
+        const updateDoc = {
+          $set: user,
+        };
 
-      if (isExist) {
-        return res.status(400).send({ error: "User already exist" });
+        // Perform the upsert operation
+        const result = await userCollection.updateOne(query, updateDoc, option);
+
+        // Send the result back to the client
+        res.send(result);
+      } catch (error) {
+        console.error("Error updating user:", error);
+        res
+          .status(500)
+          .send({ error: "An error occurred while updating the user" });
       }
-
-      const option = { upsert: true };
-      const updateDoc = {
-        $set: user,
-      };
-      const result = await userCollection.updateOne(query, updateDoc, option);
-      res.send(result);
     });
 
     app.get("/user", verifyToken, async (req, res) => {
@@ -294,12 +301,21 @@ async function run() {
 
         const premiumBiodata = await bioDatasCollection.countDocuments({
           premium: "true",
-        })
+        });
 
         const payments = await paymentCollection.find({}).toArray();
-        const totalRevenue = payments.reduce((sum, payment) => sum + payment.price, 0);
+        const totalRevenue = payments.reduce(
+          (sum, payment) => sum + payment.price,
+          0
+        );
 
-        res.send({ premiumBiodata,totalBioDatas,totalGirls,totalBoys,totalRevenue });
+        res.send({
+          premiumBiodata,
+          totalBioDatas,
+          totalGirls,
+          totalBoys,
+          totalRevenue,
+        });
       } catch (error) {
         res.status(500).send({ error: "Failed to fetch stats" });
       }
@@ -330,15 +346,18 @@ async function run() {
     });
 
     app.get("/payment", async (req, res) => {
-      const payment = await paymentCollection.find().toArray();
+      const email = req.query.email;
+      const payment = await paymentCollection.find({user:email}).toArray();
       res.send(payment);
     });
 
-    app.get('/paymentById', async (req, res) => {
-      const bioData_id = req.query.biodataId
-      const payment = await paymentCollection.findOne({  bioDataId:bioData_id })
-      res.send(payment)
-    })
+    app.get("/paymentById", async (req, res) => {
+      const bioData_id = req.query.biodataId;
+      const payment = await paymentCollection.findOne({
+        bioDataId: bioData_id,
+      });
+      res.send(payment);
+    });
 
     app.delete("/payment/:id", async (req, res) => {
       const id = req.params.id;
