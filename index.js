@@ -122,11 +122,13 @@ async function run() {
         const lastBioData = await bioDatasCollection
           .find()
           .sort({ biodata_id: -1 })
-          .limit(1)
+          .limit(0)
           .toArray();
+        console.log("last data", lastBioData);
 
         const newBiodataId =
           lastBioData.length > 0 ? parseInt(lastBioData[0].biodata_id) + 1 : 1;
+        console.log("number", newBiodataId);
 
         // Construct the update document
         const updateDoc = {
@@ -219,6 +221,25 @@ async function run() {
     app.post("/makePremium", async (req, res) => {
       const data = req.body;
       const result = await makePremiumCollection.insertOne(data);
+      res.send(result);
+    });
+
+    app.get("/makePremium", async (req, res) => {
+      const result = await makePremiumCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.put("/makePremium", async (req, res) => {
+      const { email } = req.body;
+      console.log(email);
+      const result = await makePremiumCollection.updateOne(
+        { email },
+        { $set: { status: "accepted" } }
+      );
+      const result2 = await bioDatasCollection.updateOne(
+        { contactEmail: email },
+        { $set: { premium: "true" } }
+      );
       res.send(result);
     });
 
@@ -323,31 +344,33 @@ async function run() {
     });
 
     // manage user dashboard
-    app.get('/usersByRole', async (req, res) => {
-      const role = req.query.role;
-      const users = await userCollection.find({ role: role }).toArray();
+    app.get("/usersByRole", async (req, res) => {
+      const users = await userCollection.find().toArray();
       res.send(users);
-    })
+    });
 
-    app.put('/updateRole', verifyToken, async (req, res) => {
+    app.put("/updateRole", verifyToken, async (req, res) => {
       const { email } = req.body;
       console.log(email);
       const result = await userCollection.updateOne(
         { email: email },
-        { $set: { role: 'admin' } }
+        { $set: { role: "admin" } }
       );
       res.send(result);
     });
 
-    app.put('/updatePremium', verifyToken, async (req, res) => {
+    app.put("/updatePremium", verifyToken, async (req, res) => {
       const { email } = req.body;
       const result = await bioDatasCollection.updateOne(
         { contactEmail: email },
-        { $set: { premium: 'true' } }
+        { $set: { premium: "true" } }
+      );
+      const result2 = await userCollection.updateOne(
+        { email: email },
+        { $set: { role: "premium" } }
       );
       res.send(result);
-    })
-    
+    });
 
     // payment intent
     app.post("/create-payment-intent", async (req, res) => {
