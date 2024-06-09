@@ -231,7 +231,7 @@ async function run() {
 
     app.get("/favourites", verifyToken, async (req, res) => {
       const email = req.query.email;
-      const result = await favouritesCollection.find({user:email}).toArray();
+      const result = await favouritesCollection.find({ user: email }).toArray();
       res.send(result);
     });
 
@@ -257,7 +257,8 @@ async function run() {
     app.put("/user", async (req, res) => {
       try {
         const user = req.body;
-        console.log(user);
+        const isExist = await userCollection.findOne({ email: user.email });
+        if (isExist) return;
         const query = { email: user.email };
         const option = { upsert: true };
         const updateDoc = {
@@ -277,7 +278,7 @@ async function run() {
       }
     });
 
-    app.get("/user", verifyToken, async (req, res) => {
+    app.get("/user", async (req, res) => {
       const email = req.query.email;
       try {
         const user = await userCollection.findOne({ email: email });
@@ -321,6 +322,33 @@ async function run() {
       }
     });
 
+    // manage user dashboard
+    app.get('/usersByRole', async (req, res) => {
+      const role = req.query.role;
+      const users = await userCollection.find({ role: role }).toArray();
+      res.send(users);
+    })
+
+    app.put('/updateRole', verifyToken, async (req, res) => {
+      const { email } = req.body;
+      console.log(email);
+      const result = await userCollection.updateOne(
+        { email: email },
+        { $set: { role: 'admin' } }
+      );
+      res.send(result);
+    });
+
+    app.put('/updatePremium', verifyToken, async (req, res) => {
+      const { email } = req.body;
+      const result = await bioDatasCollection.updateOne(
+        { contactEmail: email },
+        { $set: { premium: 'true' } }
+      );
+      res.send(result);
+    })
+    
+
     // payment intent
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
@@ -347,7 +375,7 @@ async function run() {
 
     app.get("/payment", async (req, res) => {
       const email = req.query.email;
-      const payment = await paymentCollection.find({user:email}).toArray();
+      const payment = await paymentCollection.find({ user: email }).toArray();
       res.send(payment);
     });
 
@@ -369,7 +397,7 @@ async function run() {
 
     // await client.connect();
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
