@@ -96,8 +96,9 @@ async function run() {
     // get by bioData_id
     app.get("/bioDatasbyId", verifyToken, async (req, res) => {
       const biodata_id = req.query.id;
+      const parseIntId = parseInt(biodata_id);
       const bioData = await bioDatasCollection.findOne({
-        biodata_id: biodata_id,
+        biodata_id: parseIntId,
       });
       res.send(bioData);
     });
@@ -124,11 +125,9 @@ async function run() {
           .sort({ biodata_id: -1 })
           .limit(0)
           .toArray();
-        console.log("last data", lastBioData);
 
         const newBiodataId =
           lastBioData.length > 0 ? parseInt(lastBioData[0].biodata_id) + 1 : 1;
-        console.log("number", newBiodataId);
 
         // Construct the update document
         const updateDoc = {
@@ -208,9 +207,7 @@ async function run() {
         const totalBoys = await bioDatasCollection.countDocuments({
           biodataType: "Male",
         });
-        const totalMarriages = await bioDatasCollection.countDocuments({
-          marriageCompleted: true,
-        });
+        const totalMarriages = await successStoriesCollection.countDocuments();
         res.send({ totalBioDatas, totalGirls, totalBoys, totalMarriages });
       } catch (error) {
         res.status(500).send({ error: "Failed to fetch stats" });
@@ -231,7 +228,6 @@ async function run() {
 
     app.put("/makePremium", async (req, res) => {
       const { email } = req.body;
-      console.log(email);
       const result = await makePremiumCollection.updateOne(
         { email },
         { $set: { status: "accepted" } }
@@ -242,6 +238,18 @@ async function run() {
       );
       res.send(result);
     });
+
+    // dashboard  Approved Contact Request
+    app.put('/approvedReq', async (req, res) => {
+      const {email} = req.body;
+      const {id} = req.body;
+      const updateResult = await paymentCollection.updateOne(
+        { user: email, bioDataId: id },
+        { $set: { status: 'accepted' } }
+      );
+      res.send({updateResult})
+    })
+
 
     // dashboard Favourites
     app.post("/favourites", verifyToken, async (req, res) => {
@@ -273,6 +281,19 @@ async function run() {
       const successStories = await successStoriesCollection.find().toArray();
       res.send(successStories);
     });
+    app.post("/successStories", async (req, res) => {
+      const data = req.body;
+      const result = await successStoriesCollection.insertOne(data);
+      res.send(result);
+    })
+    
+    app.get("/successStoriesById/:id", async (req, res) => {
+      const {id} = req.params;
+      const successStories = await successStoriesCollection.findOne({
+        _id: new ObjectId(id),
+      });
+      res.send(successStories);
+    })
 
     // save user
     app.put("/user", async (req, res) => {
@@ -351,7 +372,6 @@ async function run() {
 
     app.put("/updateRole", verifyToken, async (req, res) => {
       const { email } = req.body;
-      console.log(email);
       const result = await userCollection.updateOne(
         { email: email },
         { $set: { role: "admin" } }
@@ -396,6 +416,11 @@ async function run() {
       res.send({ result });
     });
 
+    app.get('/allPayments', async (req, res) => {
+      const payment = await paymentCollection.find().toArray();
+      res.send(payment);
+    })
+
     app.get("/payment", async (req, res) => {
       const email = req.query.email;
       const payment = await paymentCollection.find({ user: email }).toArray();
@@ -404,9 +429,8 @@ async function run() {
 
     app.get("/paymentById", async (req, res) => {
       const bioData_id = req.query.biodataId;
-      const payment = await paymentCollection.findOne({
-        bioDataId: bioData_id,
-      });
+      const email = req.query.email;
+      const payment = await paymentCollection.findOne({ bioDataId: bioData_id,user:email});
       res.send(payment);
     });
 
